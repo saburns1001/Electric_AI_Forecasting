@@ -1,0 +1,38 @@
+name: Daily Load Forecast Update
+
+on:
+  schedule:
+    - cron: '0 4 * * *'  # runs daily at 4:00 AM UTC
+  workflow_dispatch:     # allows manual trigger
+
+jobs:
+  update-forecast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: Sunflower-Electric
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy matplotlib prophet xgboost scikit-learn nbconvert
+
+      - name: Run forecast notebook
+        run: |
+          jupyter nbconvert --to notebook --execute load_forecast.ipynb --output load_forecast.ipynb
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/sunflower_load_forecast.csv load_forecast.ipynb
+          git diff --cached --quiet || git commit -m "Automated daily forecast update [skip ci]"
+          git push origin Sunflower-Electric
